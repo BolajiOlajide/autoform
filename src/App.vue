@@ -1,9 +1,11 @@
 <template>
   <div id="app">
     <h2>Firebase AutoForm</h2>
-    <!-- {{ firebaseData }} -->
+    {{ firebaseData }}
+    <br />
+    {{ formData }}
 
-    <form @submit.prevent="updateFirebase">
+    <form @submit.prevent="updateFirebase" @input="fieldUpdate">
       <input placeholder="your name" type="text" name="name" v-model="formData.name" />
       <br />
       <input placeholder="your email" type="email" name="email" v-model="formData.email" />
@@ -13,12 +15,20 @@
       <button type="submit">Submit</button>
     </form>
 
-    <h5>footer</h5>
+    <button @click="revertToOriginal">Revert to Original</button>
+
+    <div v-if="state === 'synced'">
+      Form is synced with Firestore
+    </div>
+    <div v-else-if="state === 'modified'">
+      Form data chaned, will sync with Firebase
+    </div>
   </div>
 </template>
 
 <script>
 import { db } from './firebase';
+import { debounce } from 'debounce';
 
 const documentPath = 'contacts/jeff';
 
@@ -27,7 +37,8 @@ export default {
     return {
       firebaseData: null,
       formData: {},
-      state: 'loading'
+      state: 'loading',
+      originalData: null
     };
   },
 
@@ -46,6 +57,17 @@ export default {
         this.state = 'error';
         this.errorMessage = JSON.stringify(error);
       }
+    },
+    fieldUpdate() {
+      this.state = 'modified';
+      this.debouncedUpdate();
+    },
+    debouncedUpdate: debounce(function() {
+      this.updateFirebase();
+    }, 2500),
+    revertToOriginal() {
+      this.state = 'revoked';
+      this.formData = { ...this.originalData };
     }
   },
 
@@ -59,6 +81,8 @@ export default {
     }
 
     this.formData = data;
+    this.state = 'synced';
+    this.originalData = { ...data }
   }
 }
 </script>
